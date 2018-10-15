@@ -23,6 +23,8 @@ if [ "${1:-}" == "bash" ]; then
 fi
 
 DEVPI_ROOT_PASSWORD="${DEVPI_ROOT_PASSWORD:-}"
+DEVPI_ROLE="${DEVPI_ROLE:-"master"}"
+
 if [ -f "$DEVPI_SERVER_ROOT/.root_password" ]; then
     DEVPI_ROOT_PASSWORD=$(cat "$DEVPI_SERVER_ROOT/.root_password")
 elif [ -z "$DEVPI_ROOT_PASSWORD" ]; then
@@ -38,7 +40,7 @@ initialize=no
 if [ ! -f "$DEVPI_SERVER_ROOT/.serverversion" ]; then
     initialize=yes
     echo "ENTRYPOINT: Initializing server root $DEVPI_SERVER_ROOT"
-    devpi-server --init --serverdir "$DEVPI_SERVER_ROOT"
+    devpi-server --init --serverdir "$DEVPI_SERVER_ROOT" "$@"
 fi
 
 echo "ENTRYPOINT: Starting devpi-server"
@@ -48,6 +50,7 @@ echo "ENTRYPOINT: Installing signal traps"
 trap kill_devpi SIGINT SIGTERM
 
 if [ "$initialize" == "yes" ]; then
+  if [ "$DEVPI_ROLE" == "master" ]; then
     echo "ENTRYPOINT: Initializing devpi-server"
     devpi use http://localhost:3141
     devpi login root --password=''
@@ -55,6 +58,7 @@ if [ "$initialize" == "yes" ]; then
     devpi user -m root "password=$DEVPI_ROOT_PASSWORD"
     echo -n "$DEVPI_ROOT_PASSWORD" > "$DEVPI_SERVER_ROOT/.root_password"
     devpi logoff
+  fi
 fi
 
 echo "ENTRYPOINT: Tailing log"
@@ -76,3 +80,4 @@ while : ; do
 done
 
 echo "ENTRYPOINT: devpi-server died, exiting..."
+
